@@ -46,7 +46,7 @@ app.use(bodyParser.json())
  */
 app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   next();
 });
@@ -60,14 +60,19 @@ var validaAcesso = function (req, res, next) {
   var token = req.get('Authorization');
   
   if(token != undefined) {
-      
+
       try {
         
         // retorna o token aos dados originais (a partir da chave privada):
-        var decoded = jwt.verify(token, app.get('SECRET_KEY'));
-        
-        // caso seja decodificado com sucesso, continua o processamento da requisição:
-        next();
+        // var decoded = jwt.verify(token, app.get('SECRET_KEY'));
+        jwt.verify(token, app.get('SECRET_KEY'), function(err, decoded) {      
+            if (err) {
+                return res.json({ success: false, message: 'Falha na autenticação do token.' });    
+            } else {   
+                // caso seja decodificado com sucesso, continua o processamento da requisição:
+                next();
+            }
+        });
         
       } catch(err) {
           
@@ -86,7 +91,7 @@ var validaAcesso = function (req, res, next) {
  * Retorna a lista de todas as tarefas.
  * HTTP GET /api/tarefa
  */
-app.get('/api/tarefa', function(req, res) {
+app.get('/api/tarefa', validaAcesso, function(req, res) {
     res.status(200).json(storage.tarefas);
 });
 
@@ -171,7 +176,7 @@ app.post('/api/usuario', function(req, res) {
                 storage.usuarios[i].senha == req.body.senha) {
             
             var token = jwt.sign(storage.usuarios[i], app.get('SECRET_KEY'), {
-                expiresIn: '1440' // in seconds = 24 horas.
+                expiresIn: '10000'
             });
             
             return res.status(200).json({nome: storage.usuarios[i].nome, token: token});
